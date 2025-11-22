@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grocery Inventory (CRUD)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; max-width: 980px; margin: 24px auto; padding: 0 12px; }
+    h1 { margin-bottom: 8px; }
+    form, table { width: 100%; }
+    input, select, button { padding: 8px; margin: 4px 0; }
+    table { border-collapse: collapse; margin-top: 16px; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #f4f4f4; }
+    .row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+    .row-compact { display: grid; grid-template-columns: 180px 1fr 1fr 1fr 1fr 1fr; gap: 8px; align-items: end; }
+    .actions button { margin-right: 6px; }
+    .muted { color: #666; font-size: 0.9em; }
+    .hidden { display: none; }
+    .notice { margin: 8px 0; padding: 8px; border: 1px solid #ddd; }
+    .group { margin-top: 8px; }
+    label { font-size: 0.92em; display: block; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <h1>Grocery Inventory</h1>
+  <p class="muted">Your backend should expose a REST API at <code>/api/items</code>.</p>
+
+  <!-- Mode selector -->
+  <div class="row-compact">
+    <div>
+      <label for="mode">Mode</label>
+      <select id="mode">
+        <option value="view">View</option>
+        <option value="create">Create</option>
+        <option value="edit">Edit</option>
+        <option value="delete">Delete</option>
+      </select>
+    </div>
+    <div class="muted">Select a mode to display the corresponding fields.</div>
+  </div>
+
+  <h2 id="form-title">Product Viewer</h2>
+  <form id="product-form">
+    <!-- Group for create/edit -->
+    <div id="fields-group" class="group">
+      <div class="row">
+        <div>
+          <label for="name">Name</label>
+          <input type="text" id="name" placeholder="Product name" />
+        </div>
+        <div>
+          <label for="department">Department</label>
+          <select id="department">
+            <option value="">Loading…</option>
+          </select>
+        </div>
+        <div>
+          <label for="origin">Origin</label>
+          <select id="origin">
+            <option value="">Loading…</option>
+          </select>
+        </div>
+        <div>
+          <label for="price">Price</label>
+          <input type="number" id="price" placeholder="Price" step="0.01" />
+        </div>
+        <div>
+          <label for="stock">Stock</label>
+          <input type="number" id="stock" placeholder="Stock" />
+        </div>
+        <div style="display:flex; gap:8px; align-items:flex-end;">
+          <button type="submit" id="submit-btn">Create</button>
+          <button type="button" id="cancel-btn" class="hidden">Cancel</button>
+        </div>
+      </div>
+      <input type="hidden" id="edit-id" />
+    </div>
+
+    <!-- Group for delete (only ID) -->
+    <div id="delete-group" class="group hidden">
+      <div class="row">
+        <div>
+          <label for="delete-id">ID</label>
+          <input type="number" id="delete-id" placeholder="ID to delete" />
+        </div>
+        <div style="display:flex; gap:8px; align-items:flex-end;">
+          <button type="submit" id="delete-btn">Delete</button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div id="notice" class="notice hidden"></div>
+
+  <h2>Products</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>Name</th><th>Department</th><th>Origin</th><th>Price</th><th>Stock</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <script>
+    // Point to your API (adjust host/port if needed)
+    const API_BASE = "http://localhost:50000/api";
+    const API = `${API_BASE}/items`;
+
+    const form = document.getElementById("product-form");
+    const tbody = document.getElementById("tbody");
+    const modeSel = document.getElementById("mode");
+
+    const formTitle = document.getElementById("form-title");
+    const submitBtn = document.getElementById("submit-btn");
+    const cancelBtn = document.getElementById("cancel-btn");
+
+    const fieldsGroup = document.getElementById("fields-group");
+    const deleteGroup = document.getElementById("delete-group");
+
+    const nameEl = document.getElementById("name");
+    const deptEl = document.getElementById("department");
+    const originEl = document.getElementById("origin");
+    const priceEl = document.getElementById("price");
+    const stockEl = document.getElementById("stock");
+    const editId = document.getElementById("edit-id");
+    const deleteId = document.getElementById("delete-id");
+    const notice = document.getElementById("notice");
+
+    // cache for options
+    let DEPARTMENTS = []; // [{id, name}]
+    let ORIGINS = [];     // [{id, code}]
+
+    function showNotice(msg) {
+      notice.textContent = msg;
+      notice.classList.remove("hidden");
+      setTimeout(() => notice.classList.add("hidden"), 1500);
+    }
+
+    async function loadMeta() {
+      // load departments
+      try {
+        const d = await fetch(`${API_BASE}/departments`);
+        DEPARTMENTS = await d.json();
+      } catch (e) { DEPARTMENTS = []; }
+
+      // load origins
+      try {
+        const o = await fetch(`${API_BASE}/origins`);
+        ORIGINS = await o.json();
+      } catch (e) { ORIGINS = []; }
+
+      // populate selects
+      deptEl.innerHTML = "";
+      if (DEPARTMENTS.length === 0) {
+        deptEl.innerHTML = `<option value="">(no departments)</option>`;
+      } else {
+        deptEl.innerHTML = `<option value="">Select a department…</option>` +
+          DEPARTMENTS.map(x => `<option value="${x.name}">${x.name}</option>`).join("");
+      }
+
+      originEl.innerHTML = "";
+      if (ORIGINS.length === 0) {
+        originEl.innerHTML = `<option value="">(no origins)</option>`;
+      } else {
+        originEl.innerHTML = `<option value="">Select an origin…</option>` +
+          ORIGINS.map(x => `<option value="${x.code}">${x.code}</option>`).join("");
+      }
+    }
+
+    async function loadItems() {
+      const res = await fetch(API);
+      const items = await res.json();
+      tbody.innerHTML = "";
+      for (const it of items) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${it.id}</td>
+          <td>${it.name}</td>
+          <td>${it.department}</td>
+          <td>${it.origin ?? ""}</td>
+          <td>${it.price}</td>
+          <td>${it.stock}</td>
+          <td class="actions">
+            <button data-id="${it.id}" data-action="edit">Edit</button>
+            <button data-id="${it.id}" data-action="del">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function clearFormFields() {
+      nameEl.value = "";
+      deptEl.value = "";
+      originEl.value = "";
+      priceEl.value = "";
+      stockEl.value = "";
+      editId.value = "";
+      deleteId.value = "";
+    }
+
+    function setCreateMode() {
+      clearFormFields();
+      formTitle.textContent = "Create Product";
+      fieldsGroup.classList.remove("hidden");
+      deleteGroup.classList.add("hidden");
+      submitBtn.textContent = "Create";
+      cancelBtn.classList.add("hidden");
+    }
+
+    function setViewMode() {
+      clearFormFields();
+      formTitle.textContent = "Product Viewer";
+      fieldsGroup.classList.add("hidden");
+      deleteGroup.classList.add("hidden");
+      cancelBtn.classList.add("hidden");
+    }
+
+    function setEditMode(item = null) {
+      if (item) {
+        editId.value = item.id;
+        nameEl.value = item.name;
+        deptEl.value = item.department || "";
+        originEl.value = item.origin || "";
+        priceEl.value = item.price;
+        stockEl.value = item.stock;
+      } else {
+        clearFormFields();
+      }
+      formTitle.textContent = editId.value ? ("Edit Product #" + editId.value) : "Edit Product";
+      fieldsGroup.classList.remove("hidden");
+      deleteGroup.classList.add("hidden");
+      submitBtn.textContent = "Edit";
+      cancelBtn.classList.remove("hidden");
+    }
+
+    function setDeleteMode(prefillId = "") {
+      clearFormFields();
+      formTitle.textContent = "Delete Product";
+      fieldsGroup.classList.add("hidden");
+      deleteGroup.classList.remove("hidden");
+      cancelBtn.classList.add("hidden");
+      if (prefillId) deleteId.value = prefillId;
+    }
+
+    // Mode selector
+    modeSel.addEventListener("change", () => {
+      const m = modeSel.value;
+      if (m === "view") setViewMode();
+      else if (m === "create") setCreateMode();
+      else if (m === "edit") setEditMode();
+      else if (m === "delete") setDeleteMode();
+    });
+
+    // Table actions
+    tbody.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      const id = btn.dataset.id;
+      const action = btn.dataset.action;
+
+      if (action === "edit") {
+        const res = await fetch(`${API}/${id}`);
+        if (res.ok) {
+          const item = await res.json();
+          modeSel.value = "edit";
+          setEditMode(item);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } else {
+          alert("Not found");
+        }
+      } else if (action === "del") {
+        modeSel.value = "delete";
+        setDeleteMode(id);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
+
+    // Form submit
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const m = modeSel.value;
+
+      if (m === "create") {
+        const payload = {
+          name: nameEl.value,
+          department: deptEl.value,            // department name (string)
+          origin: originEl.value || undefined, // origin code (string), API defaults to "MX"
+          price: parseFloat(priceEl.value),
+          stock: parseInt(stockEl.value)
+        };
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          await loadItems();
+          setCreateMode();
+          showNotice("Product created ✓");
+        } else {
+          alert("Error creating product");
+        }
+      } else if (m === "edit") {
+        const id = editId.value;
+        if (!id) {
+          alert("Select a product to edit (use the Edit button in the table).");
+          return;
+        }
+        const payload = {
+          name: nameEl.value,
+          department: deptEl.value,
+          origin: originEl.value || undefined,
+          price: parseFloat(priceEl.value),
+          stock: parseInt(stockEl.value)
+        };
+        const res = await fetch(`${API}/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          await loadItems();
+          setEditMode();
+          showNotice("Product updated ✓");
+        } else {
+          alert("Error updating product");
+        }
+      } else if (m === "delete") {
+        const id = deleteId.value;
+        if (!id) { alert("Enter an ID to delete."); return; }
+        const res = await fetch(`${API}/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          await loadItems();
+          setDeleteMode();
+          showNotice("Product deleted ✓");
+        } else {
+          alert("Not found");
+        }
+      } else {
+        showNotice("View mode: no submit action.");
+      }
+    });
+
+    // Cancel button
+    cancelBtn.addEventListener("click", () => {
+      setEditMode();
+      cancelBtn.classList.add("hidden");
+    });
+
+    // init: load metadata first, then items
+    (async () => {
+      await loadMeta();
+      await loadItems();
+      setViewMode();
+    })();
+  </script>
+</body>
+</html>
