@@ -1,8 +1,5 @@
-<<<<<<< Updated upstream:Final Project groceries-crud-empty/docker-compose.yml
 version: "3.9"
 
-=======
->>>>>>> Stashed changes:groceries-crud-empty/groceries-crud-empty/docker-compose.yml
 services:
   db:
     image: mysql:8.0
