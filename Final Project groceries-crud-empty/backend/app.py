@@ -128,66 +128,43 @@ def fetch_origins():
 
 
 # -------- Flask app --------
-app = Flask(__name__, static_folder="static", static_url_path="")
-CORS(app)  # allow front-end JS to call API
-
-# Serve the static index
 @app.route("/")
 def root():
     return send_from_directory("static", "index.html")
 
-
-# -------- REST API (only instructional messages here) --------
-@app.get("/api/items")
-def api_list_items():
-    return jsonify({
-        "message": "GET /api/items should return a list of products joined with dept.name and origin.code."
-    })
-
-@app.get("/api/items/<int:product_id>")
-def api_get_item(product_id):
-    return jsonify({
-        "message": "GET /api/items/<id> should return a single product (with department and origin) or 404 if not found.",
-        "id_received": product_id
-    })
-
-@app.post("/api/items")
-def api_create_item():
-    data = request.get_json(force=True)
-    return jsonify({
-        "message": "POST /api/items should insert a product (resolving dept_id and origin_id) and return the new id.",
-        "payload_received": data
-    }), 201
-
-@app.put("/api/items/<int:product_id>")
-def api_update_item(product_id):
-    data = request.get_json(force=True)
-    return jsonify({
-        "message": "PUT /api/items/<id> should update the product (name, department->dept_id, origin->origin_id, price, stock).",
-        "id_received": product_id,
-        "payload_received": data
-    })
-
-@app.delete("/api/items/<int:product_id>")
-def api_delete_item(product_id):
-    return jsonify({
-        "message": "DELETE /api/items/<id> should delete the product and return a confirmation.",
-        "id_received": product_id
-    })
-
-@app.get("/api/departments")
+@app.route("/api/departments")
 def api_departments():
-    return jsonify({
-        "message": "GET /api/departments should return a list like: [{id, name}, ...] ordered by name."
-    })
+    return jsonify(fetch_departments())
 
-@app.get("/api/origins")
+@app.route("/api/origins")
 def api_origins():
-    return jsonify({
-        "message": "GET /api/origins should return a list like: [{id, code}, ...] ordered by code."
-    })
+    return jsonify(fetch_origins())
 
+@app.route("/api/items")
+def api_items():
+    return jsonify(fetch_all_products())
+
+@app.route("/api/items", methods=["POST"])
+def api_create_item():
+    insert_product(request.json)
+    return jsonify({"status": "created"})
+
+@app.route("/api/items/<int:item_id>", methods=["GET"])
+def api_get_item(item_id):
+    item = fetch_product(item_id)
+    if not item:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify(item)
+
+@app.route("/api/items/<int:item_id>", methods=["PUT"])
+def api_update_item(item_id):
+    update_product(item_id, request.json)
+    return jsonify({"status": "updated"})
+
+@app.route("/api/items/<int:item_id>", methods=["DELETE"])
+def api_delete_item(item_id):
+    delete_product(item_id)
+    return jsonify({"status": "deleted"})
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", "5000"))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=5000)
