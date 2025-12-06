@@ -15,57 +15,61 @@ def get_conn():
     )
 
 
-def get_or_create_dept_id(dept_name):
-    """
-    TODO (student):
-      - Try to SELECT id FROM dept WHERE name=%s LIMIT 1
-      - If exists, return that id
-      - Else INSERT INTO dept(name) VALUES(%s) and return lastrowid
-    """
-    # Pseudocode only:
-    # conn = get_conn()
-    # with conn.cursor() as cur:
-    #   cur.execute("SELECT id FROM dept WHERE name=%s LIMIT 1", (dept_name,))
-    #   row = cur.fetchone()
-    #   if row: return row["id"]
-    #   cur.execute("INSERT INTO dept (name) VALUES (%s)", (dept_name,))
-    #   return cur.lastrowid
-    return None  # placeholder
+def get_or_create_dept_id(name):
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM dept WHERE name=%s", (name,))
+        row = cur.fetchone()
+        if row:
+            return row["id"]
+        cur.execute("INSERT INTO dept(name) VALUES (%s)", (name,))
+        return cur.lastrowid
 
 
-def get_or_create_origin_id(origin_code):
-    """
-    TODO (student):
-      - Default origin_code to 'MX' if missing
-      - SELECT id FROM origin WHERE code=%s LIMIT 1
-      - If exists, return it; otherwise INSERT and return lastrowid
-    """
-    return None  # placeholder
+def get_or_create_origin_id(code):
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM origin WHERE code=%s", (code,))
+        row = cur.fetchone()
+        if row:
+            return row["id"]
+        cur.execute("INSERT INTO origin(code) VALUES (%s)", (code,))
+        return cur.lastrowid
 
 
 def fetch_all_products():
-    """
-    TODO (student):
-      - Return a list of products joining dept and origin so the frontend sees:
-        id, name, department (dept.name), origin (origin.code), price, stock
-      - SQL idea:
-        SELECT p.id, p.name, d.name AS department, o.code AS origin, p.price, p.stock
+    conn = get_conn()
+    with conn.cursor() as cur:
+        query = """
+        SELECT p.id, p.name,
+               d.name AS department,
+               o.code AS origin,
+               p.price,
+               p.stock
         FROM products p
         JOIN dept d ON p.dept_id = d.id
         JOIN origin o ON p.origin_id = o.id
-        ORDER BY p.id;
-    """
-    return []  # placeholder
-
+        ORDER BY p.id
+        """
+        cur.execute(query)
+        return cur.fetchall()
 
 def fetch_product(product_id):
-    """
-    TODO (student):
-      - Return a single product by id with the same join as above
-      - If not found, return None
-    """
-    return None  # placeholder
-
+    conn = get_conn()
+    with conn.cursor() as cur:
+        query = """
+        SELECT p.id, p.name,
+               d.name AS department,
+               o.code AS origin,
+               p.price,
+               p.stock
+        FROM products p
+        JOIN dept d ON p.dept_id = d.id
+        JOIN origin o ON p.origin_id = o.id
+        WHERE p.id = %s
+        """
+        cur.execute(query, (product_id,))
+        return cur.fetchone()
 
 def insert_product(product):
     dept_id = get_or_create_dept_id(product["department"])
@@ -111,21 +115,16 @@ def delete_product(product_id):
 
 # --- Helpers to list departments and origins ---
 def fetch_departments():
-    """
-    TODO (student):
-      - SELECT id, name FROM dept ORDER BY name;
-      - Return list of dicts
-    """
-    return []  # placeholder
-
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute("SELECT id, name FROM dept ORDER BY name")
+        return cur.fetchall()
 
 def fetch_origins():
-    """
-    TODO (student):
-      - SELECT id, code FROM origin ORDER BY code;
-      - Return list of dicts
-    """
-    return []  # placeholder
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute("SELECT id, code FROM origin ORDER BY code")
+        return cur.fetchall()
 
 
 # -------- Flask app --------
