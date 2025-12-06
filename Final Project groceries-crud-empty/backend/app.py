@@ -67,33 +67,46 @@ def fetch_product(product_id):
     return None  # placeholder
 
 
-def insert_product(name, department, origin, price, stock):
-    """
-    TODO (student):
-      - Use get_or_create_dept_id and get_or_create_origin_id to get foreign keys
-      - INSERT INTO products (name, dept_id, origin_id, price, stock) VALUES (...)
-      - Return new product id (lastrowid)
-    """
-    return None  # placeholder
+def insert_product(product):
+    dept_id = get_or_create_dept_id(product["department"])
+    origin_id = get_or_create_origin_id(product["origin"])
 
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO products(name, dept_id, origin_id, price, stock)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            product["name"],
+            dept_id,
+            origin_id,
+            product["price"],
+            product["stock"]
+        ))
 
-def update_product(product_id, name, department, origin, price, stock):
-    """
-    TODO (student):
-      - Resolve dept_id/origin_id
-      - UPDATE products SET ... WHERE id=%s
-      - Return affected rows count
-    """
-    return 0  # placeholder
+def update_product(product_id, product):
+    dept_id = get_or_create_dept_id(product["department"])
+    origin_id = get_or_create_origin_id(product["origin"])
 
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute("""
+            UPDATE products
+            SET name=%s, dept_id=%s, origin_id=%s, price=%s, stock=%s
+            WHERE id=%s
+        """, (
+            product["name"],
+            dept_id,
+            origin_id,
+            product["price"],
+            product["stock"],
+            product_id
+        ))
 
 def delete_product(product_id):
-    """
-    TODO (student):
-      - DELETE FROM products WHERE id=%s
-      - Return affected rows count
-    """
-    return 0  # placeholder
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM products WHERE id=%s", (product_id,))
 
 
 # --- Helpers to list departments and origins ---
