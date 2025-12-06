@@ -1,20 +1,18 @@
 import os
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
 import pymysql
+from flask import Flask, request, jsonify, send_from_directory
 
-# -------- DB helpers (no classes, just functions) --------
+app = Flask(__name__, static_folder="static", static_url_path="")
+
 def get_conn():
-    """
-    TODO (student):
-      - Create and return a MySQL connection using environment variables:
-        MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE
-      - Use pymysql.connect(...) with DictCursor and autocommit=True
-    """
-    # Example (do NOT implement here in the starter):
-    # return pymysql.connect(host=..., user=..., password=..., database=...,
-    #                        cursorclass=pymysql.cursors.DictCursor, autocommit=True)
-    return None  # placeholder
+    return pymysql.connect(
+        host=os.getenv("MYSQL_HOST", "db"),
+        user=os.getenv("MYSQL_USER", "root"),
+        password=os.getenv("MYSQL_PASSWORD", "1234"),
+        database=os.getenv("MYSQL_DATABASE", "groceries"),
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=True
+    )
 
 
 def get_or_create_dept_id(dept_name):
