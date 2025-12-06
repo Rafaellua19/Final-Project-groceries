@@ -1,37 +1,45 @@
--- TODO (student):
--- This file should create a simple relational schema for a grocery inventory.
--- Suggested steps (write the real SQL yourself):
+CREATE DATABASE IF NOT EXISTS groceries;
+USE groceries;
 
--- 1) Create database and (optionally) a user:
---    CREATE DATABASE groceries;
---    CREATE USER 'user'@'%' IDENTIFIED BY 'pass';
---    GRANT ALL PRIVILEGES ON groceries.* TO 'user'@'%';
---    USE groceries;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS dept;
+DROP TABLE IF EXISTS origin;
 
--- 2) Create reference tables:
---    Table dept:
---      id INT AUTO_INCREMENT PRIMARY KEY
---      name VARCHAR(50) NOT NULL
+CREATE TABLE dept (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL
+);
 
---    Table origin:
---      id INT AUTO_INCREMENT PRIMARY KEY
---      code VARCHAR(3) NOT NULL
+CREATE TABLE origin (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  code VARCHAR(3) NOT NULL
+);
 
--- 3) Create products table that references dept and origin:
---      id INT AUTO_INCREMENT PRIMARY KEY
---      name VARCHAR(100) NOT NULL
---      dept_id INT NOT NULL
---      origin_id INT NOT NULL
---      price DECIMAL(10,2) NOT NULL
---      stock INT NOT NULL
---      FOREIGN KEY (dept_id) REFERENCES dept(id)
---      FOREIGN KEY (origin_id) REFERENCES origin(id)
+CREATE TABLE products (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  dept_id INT NOT NULL,
+  origin_id INT NOT NULL,
+  price DECIMAL(10,2) NOT NULL,
+  stock INT NOT NULL,
+  FOREIGN KEY (dept_id) REFERENCES dept(id),
+  FOREIGN KEY (origin_id) REFERENCES origin(id)
+);
 
--- 4) (Optional) Insert some seed rows:
---    INSERT INTO dept (name) VALUES ('Dairy'), ('Produce'), ... ;
---    INSERT INTO origin (code) VALUES ('MX'), ('USA'), ... ;
---    INSERT INTO products (name, dept_id, origin_id, price, stock) VALUES (...);
+INSERT INTO dept (name) VALUES
+  ('Produce'),
+  ('Dairy'),
+  ('Bakery'),
+  ('Beverages');
 
--- Insert products, referencing dept and origin IDs.
--- Note: We use subqueries to find the IDs, which is more robust than assuming ID values.
--- Keep it simple. Avoid complex constraints or validations.
+INSERT INTO origin (code) VALUES
+  ('MX'),
+  ('USA'),
+  ('CAN'),
+  ('BR');
+
+INSERT INTO products (name, dept_id, origin_id, price, stock) VALUES
+  ('Apples', 1, 1, 25.50, 30),
+  ('Milk 1L', 2, 1, 18.90, 40),
+  ('Whole Wheat Bread', 3, 1, 32.00, 15),
+  ('Orange Juice', 4, 2, 45.00, 20);
